@@ -23,7 +23,7 @@ export async function sendOTPEmail(email, userName) {
 
   const msg = {
     to: email,
-    from: 'noreply@teleconnect.com', // Replace with your verified sender
+    from: 'support@replit.app', // Using Replit domain for demo
     subject: 'TeleConnect - Your OTP Code',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -100,7 +100,7 @@ export function verifyOTP(email, enteredOTP) {
 export async function sendWelcomeEmail(email, userName, accountNumber, planType) {
   const msg = {
     to: email,
-    from: 'noreply@teleconnect.com', // Replace with your verified sender
+    from: 'support@replit.app', // Using Replit domain for demo
     subject: 'Welcome to TeleConnect - Account Activated!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

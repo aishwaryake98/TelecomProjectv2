@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useFormPersistence } from "@/hooks/use-form-persistence.js";
 
 const formSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -34,6 +35,9 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
     }
   });
 
+  // Enable form persistence
+  const { clearPersistedData } = useFormPersistence('customer-details-form', form);
+
   const createApplicationMutation = useMutation({
     mutationFn: async (data) => {
       const response = await apiRequest("POST", "/api/onboarding/applications", data);
@@ -41,6 +45,8 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
     },
     onSuccess: (data) => {
       onApplicationCreate(data.id);
+      // Clear persisted form data after successful submission
+      clearPersistedData();
       toast({
         title: "Application Created",
         description: "Your personal information has been saved successfully."

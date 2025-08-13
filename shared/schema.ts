@@ -16,6 +16,7 @@ export const onboardingApplications = pgTable("onboarding_applications", {
   verificationStatus: text("verification_status").default("pending"),
   consentGiven: boolean("consent_given").default(false),
   otpVerified: boolean("otp_verified").default(false),
+  smsOtpVerified: boolean("sms_otp_verified").default(false),
   digitalSignature: text("digital_signature"),
   kycStatus: text("kyc_status").default("pending"),
   serviceActivated: boolean("service_activated").default(false),

@@ -5,13 +5,14 @@ import CustomerDetailsForm from "@/components/onboarding/customer-details-form.j
 import DocumentUpload from "@/components/onboarding/document-upload.jsx";
 import DocumentVerification from "@/components/onboarding/document-verification.jsx";
 import ConsentSignature from "@/components/onboarding/consent-signature.jsx";
+import DualAuthentication from "@/components/onboarding/dual-authentication.jsx";
 import KYCApproval from "@/components/onboarding/kyc-approval.jsx";
 import WelcomeCompletion from "@/components/onboarding/welcome-completion.jsx";
 
 function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [applicationId, setApplicationId] = useState(null);
-  const totalSteps = 7;
+  const totalSteps = 8;
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
@@ -55,8 +56,10 @@ function OnboardingPage() {
       case 5:
         return <ConsentSignature applicationId={applicationId} onNext={nextStep} onPrev={prevStep} />;
       case 6:
-        return <KYCApproval applicationId={applicationId} onNext={nextStep} onPrev={prevStep} />;
+        return <DualAuthentication applicationId={applicationId} onNext={nextStep} onPrev={prevStep} />;
       case 7:
+        return <KYCApproval applicationId={applicationId} onNext={nextStep} onPrev={prevStep} />;
+      case 8:
         return <WelcomeCompletion applicationId={applicationId} />;
       default:
         return null;

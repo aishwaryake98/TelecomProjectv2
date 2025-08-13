@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { insertOnboardingApplicationSchema, updateOnboardingApplicationSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
 import { sendOTPEmail, verifyOTP, sendWelcomeEmail } from "./email.js";
+import { sendSMSOTP, verifySMSOTP, resendSMSOTP } from "./sms.js";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -206,7 +207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if all requirements are met
       const canApprove = application.verificationStatus === 'verified' && 
                         application.consentGiven && 
-                        application.otpVerified;
+                        application.otpVerified &&
+                        application.smsOtpVerified;
 
       if (!canApprove) {
         return res.status(400).json({ message: "Requirements not met for approval" });
@@ -223,6 +225,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ approved: true, accountNumber });
     } catch (error) {
       res.status(500).json({ message: "Failed to process approval" });
+    }
+  });
+
+  // Send SMS OTP
+  app.post("/api/onboarding/applications/:id/send-sms-otp", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const result = await sendSMSOTP(application.phone, `${application.firstName} ${application.lastName}`);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send SMS OTP" });
+    }
+  });
+
+  // Verify SMS OTP
+  app.post("/api/onboarding/applications/:id/verify-sms-otp", async (req, res) => {
+    try {
+      const { otp } = req.body;
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const verification = verifySMSOTP(application.phone, otp);
+      
+      if (verification.valid) {
+        await storage.updateOnboardingApplication(req.params.id, {
+          smsOtpVerified: true
+        });
+      }
+
+      res.json(verification);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to verify SMS OTP" });
+    }
+  });
+
+  // Resend SMS OTP
+  app.post("/api/onboarding/applications/:id/resend-sms-otp", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const result = await resendSMSOTP(application.phone, `${application.firstName} ${application.lastName}`);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to resend SMS OTP" });
     }
   });
 
