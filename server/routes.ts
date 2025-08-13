@@ -4,6 +4,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertOnboardingApplicationSchema, updateOnboardingApplicationSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
+import { sendOTPEmail, verifyOTP, sendWelcomeEmail } from "./email.js";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -151,21 +152,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send OTP to email
+  app.post("/api/onboarding/applications/:id/send-otp", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const result = await sendOTPEmail(application.email, application.firstName);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send OTP" });
+    }
+  });
+
   // Submit consent and OTP
   app.post("/api/onboarding/applications/:id/consent", async (req, res) => {
     try {
       const { consents, otp, digitalSignature } = req.body;
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
       
-      // Mock OTP verification (in real app, validate against sent OTP)
-      const otpValid = otp === "123456" || otp?.length === 6;
+      // Verify OTP against user's email
+      const otpVerification = verifyOTP(application.email, otp);
       
       await storage.updateOnboardingApplication(req.params.id, {
         consentGiven: consents?.every((c: boolean) => c) || false,
-        otpVerified: otpValid,
+        otpVerified: otpVerification.valid,
         digitalSignature: digitalSignature || "digital_signature_hash"
       });
 
-      res.json({ success: true, otpValid });
+      res.json({ 
+        success: true, 
+        otpValid: otpVerification.valid,
+        message: otpVerification.message
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to process consent" });
     }
@@ -202,17 +226,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send welcome notifications (mock)
+  // Send welcome notifications
   app.post("/api/onboarding/applications/:id/notifications", async (req, res) => {
     try {
       const { types } = req.body; // ['sms', 'email', 'push']
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
       
-      // Mock notification sending
       const results = {
         sms: types.includes('sms'),
-        email: types.includes('email'),
-        push: types.includes('push')
+        push: types.includes('push'),
+        email: false
       };
+
+      // Send welcome email if requested
+      if (types.includes('email')) {
+        const emailResult = await sendWelcomeEmail(
+          application.email,
+          `${application.firstName} ${application.lastName}`,
+          application.accountNumber || "TC-000000000",
+          application.planType || "Premium Unlimited"
+        );
+        results.email = emailResult.success;
+      }
 
       res.json({ notifications: results });
     } catch (error) {
