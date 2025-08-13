@@ -1,0 +1,225 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import multer from "multer";
+import { storage } from "./storage";
+import { insertOnboardingApplicationSchema, updateOnboardingApplicationSchema, insertDocumentSchema } from "@shared/schema";
+import { z } from "zod";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, JPEG, and PNG files are allowed.'));
+    }
+  }
+});
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Create onboarding application
+  app.post("/api/onboarding/applications", async (req, res) => {
+    try {
+      const validatedData = insertOnboardingApplicationSchema.parse(req.body);
+      const application = await storage.createOnboardingApplication(validatedData);
+      res.json(application);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create application" });
+    }
+  });
+
+  // Get onboarding application
+  app.get("/api/onboarding/applications/:id", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      res.json(application);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch application" });
+    }
+  });
+
+  // Update onboarding application
+  app.patch("/api/onboarding/applications/:id", async (req, res) => {
+    try {
+      const validatedData = updateOnboardingApplicationSchema.parse(req.body);
+      const application = await storage.updateOnboardingApplication(req.params.id, validatedData);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      res.json(application);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update application" });
+    }
+  });
+
+  // Upload documents
+  app.post("/api/onboarding/applications/:id/documents", upload.array('documents', 5), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const uploadedDocs = [];
+      for (const file of files) {
+        const documentData = {
+          applicationId: req.params.id,
+          fileName: file.originalname,
+          fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          fileType: file.mimetype,
+          documentType: req.body.documentType || 'aadhaar' // Should be determined from file analysis
+        };
+
+        const document = await storage.createDocument(documentData);
+        uploadedDocs.push(document);
+      }
+
+      // Update application with uploaded documents
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (application) {
+        const existingDocs = Array.isArray(application.documentsUploaded) ? application.documentsUploaded : [];
+        await storage.updateOnboardingApplication(req.params.id, {
+          documentsUploaded: [...existingDocs, ...uploadedDocs]
+        });
+      }
+
+      res.json({ documents: uploadedDocs });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload documents" });
+    }
+  });
+
+  // Get documents for application
+  app.get("/api/onboarding/applications/:id/documents", async (req, res) => {
+    try {
+      const documents = await storage.getDocumentsByApplicationId(req.params.id);
+      res.json(documents);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Simulate OCR processing
+  app.post("/api/onboarding/applications/:id/ocr", async (req, res) => {
+    try {
+      const { documentType } = req.body;
+      const extractedData = await storage.simulateOCRExtraction(documentType);
+      
+      // Update application with extracted data
+      await storage.updateOnboardingApplication(req.params.id, {
+        extractedData,
+        verificationStatus: 'processing'
+      });
+
+      res.json({ extractedData });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process OCR" });
+    }
+  });
+
+  // Simulate document verification
+  app.post("/api/onboarding/applications/:id/verify", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const isVerified = await storage.simulateDocumentVerification(application.extractedData);
+      
+      await storage.updateOnboardingApplication(req.params.id, {
+        verificationStatus: isVerified ? 'verified' : 'failed'
+      });
+
+      res.json({ verified: isVerified });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to verify documents" });
+    }
+  });
+
+  // Submit consent and OTP
+  app.post("/api/onboarding/applications/:id/consent", async (req, res) => {
+    try {
+      const { consents, otp, digitalSignature } = req.body;
+      
+      // Mock OTP verification (in real app, validate against sent OTP)
+      const otpValid = otp === "123456" || otp?.length === 6;
+      
+      await storage.updateOnboardingApplication(req.params.id, {
+        consentGiven: consents?.every((c: boolean) => c) || false,
+        otpVerified: otpValid,
+        digitalSignature: digitalSignature || "digital_signature_hash"
+      });
+
+      res.json({ success: true, otpValid });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process consent" });
+    }
+  });
+
+  // KYC Approval
+  app.post("/api/onboarding/applications/:id/approve", async (req, res) => {
+    try {
+      const application = await storage.getOnboardingApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      // Check if all requirements are met
+      const canApprove = application.verificationStatus === 'verified' && 
+                        application.consentGiven && 
+                        application.otpVerified;
+
+      if (!canApprove) {
+        return res.status(400).json({ message: "Requirements not met for approval" });
+      }
+
+      const accountNumber = `TC-${Math.random().toString().slice(2, 11)}`;
+      
+      await storage.updateOnboardingApplication(req.params.id, {
+        kycStatus: 'approved',
+        serviceActivated: true,
+        accountNumber
+      });
+
+      res.json({ approved: true, accountNumber });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process approval" });
+    }
+  });
+
+  // Send welcome notifications (mock)
+  app.post("/api/onboarding/applications/:id/notifications", async (req, res) => {
+    try {
+      const { types } = req.body; // ['sms', 'email', 'push']
+      
+      // Mock notification sending
+      const results = {
+        sms: types.includes('sms'),
+        email: types.includes('email'),
+        push: types.includes('push')
+      };
+
+      res.json({ notifications: results });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send notifications" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
