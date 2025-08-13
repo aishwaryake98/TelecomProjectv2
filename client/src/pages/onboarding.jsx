@@ -36,18 +36,7 @@ function OnboardingPage() {
             <h3 className="text-2xl font-semibold text-neutral-dark mb-2">Welcome to TeleConnect</h3>
             <p className="text-neutral-medium mb-8">Let's get you connected with our premium telecom services. The entire process takes just a few minutes.</p>
 
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-lg">
-                <Signal className="text-2xl mb-3" />
-                <h4 className="font-semibold mb-2">Web Portal</h4>
-                <p className="text-sm opacity-90">Complete your onboarding securely online</p>
-              </div>
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg">
-                <Headset className="text-2xl mb-3" />
-                <h4 className="font-semibold mb-2">24/7 Support</h4>
-                <p className="text-sm opacity-90">Get help whenever you need it</p>
-              </div>
-            </div>
+
 
             <button 
               onClick={nextStep} 
