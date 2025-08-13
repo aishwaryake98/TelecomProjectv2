@@ -1,18 +1,18 @@
 import sgMail from '@sendgrid/mail';
 
 // Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
 
 // Store OTPs temporarily (in production, use Redis or database)
-const otpStorage = new Map();
+const otpStorage = new Map<string, { otp: string; expires: number }>();
 
 // Generate 6-digit OTP
-function generateOTP() {
+function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Send OTP email
-export async function sendOTPEmail(email, userName) {
+export async function sendOTPEmail(email: string, userName: string) {
   const otp = generateOTP();
   
   // Store OTP with 5-minute expiration
@@ -75,7 +75,7 @@ export async function sendOTPEmail(email, userName) {
 }
 
 // Verify OTP
-export function verifyOTP(email, enteredOTP) {
+export function verifyOTP(email: string, enteredOTP: string) {
   const stored = otpStorage.get(email);
   
   if (!stored) {
@@ -97,7 +97,7 @@ export function verifyOTP(email, enteredOTP) {
 }
 
 // Send welcome email
-export async function sendWelcomeEmail(email, userName, accountNumber, planType) {
+export async function sendWelcomeEmail(email: string, userName: string, accountNumber: string, planType: string) {
   const msg = {
     to: email,
     from: 'support@replit.app', // Using Replit domain for demo

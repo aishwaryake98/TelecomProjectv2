@@ -2,15 +2,15 @@
 // In production, integrate with Twilio, AWS SNS, or other SMS providers
 
 // Store SMS OTPs temporarily (in production, use Redis or database)
-const smsOtpStorage = new Map();
+const smsOtpStorage = new Map<string, { otp: string; expires: number }>();
 
 // Generate 6-digit OTP
-function generateSMSOTP() {
+function generateSMSOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Send SMS OTP (demo implementation)
-export async function sendSMSOTP(phoneNumber, userName) {
+export async function sendSMSOTP(phoneNumber: string, userName: string) {
   const otp = generateSMSOTP();
   
   // Store OTP with 5-minute expiration
@@ -45,7 +45,7 @@ export async function sendSMSOTP(phoneNumber, userName) {
 }
 
 // Verify SMS OTP
-export function verifySMSOTP(phoneNumber, enteredOTP) {
+export function verifySMSOTP(phoneNumber: string, enteredOTP: string) {
   const stored = smsOtpStorage.get(phoneNumber);
   
   if (!stored) {
@@ -67,7 +67,7 @@ export function verifySMSOTP(phoneNumber, enteredOTP) {
 }
 
 // Resend SMS OTP
-export async function resendSMSOTP(phoneNumber, userName) {
+export async function resendSMSOTP(phoneNumber: string, userName: string) {
   // Remove existing OTP
   smsOtpStorage.delete(phoneNumber);
   

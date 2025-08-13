@@ -4,8 +4,8 @@ import multer from "multer";
 import { storage } from "./storage";
 import { insertOnboardingApplicationSchema, updateOnboardingApplicationSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
-import { sendOTPEmail, verifyOTP, sendWelcomeEmail } from "./email.js";
-import { sendSMSOTP, verifySMSOTP, resendSMSOTP } from "./sms.js";
+import { sendOTPEmail, verifyOTP, sendWelcomeEmail } from "./email";
+import { sendSMSOTP, verifySMSOTP, resendSMSOTP } from "./sms";
 
 // Configure multer for file uploads
 const upload = multer({
