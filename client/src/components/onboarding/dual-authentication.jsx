@@ -126,13 +126,21 @@ function DualAuthentication({ applicationId, onNext, onPrev }) {
     return () => clearInterval(interval);
   }, [emailTimer, smsTimer]);
 
-  // Auto-send OTPs on component mount
+  // Auto-send OTPs on component mount if not already verified
   useEffect(() => {
-    if (applicationId && application) {
+    if (applicationId && application && !emailVerified && !smsVerified) {
       sendEmailOTPMutation.mutate();
       sendSMSOTPMutation.mutate();
     }
   }, [applicationId, application]);
+
+  // Check if OTPs are already verified from the application data
+  useEffect(() => {
+    if (application) {
+      setEmailVerified(application.otpVerified || false);
+      setSmsVerified(application.smsOtpVerified || false);
+    }
+  }, [application]);
 
   const handleEmailVerification = () => {
     if (emailOTP.length === 6) {
