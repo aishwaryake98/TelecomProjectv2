@@ -22,6 +22,7 @@ export const onboardingApplications = pgTable("onboarding_applications", {
   serviceActivated: boolean("service_activated").default(false),
   accountNumber: text("account_number"),
   planType: text("plan_type").default("Premium Unlimited"),
+  notificationsSent: boolean("notifications_sent").default(false),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`)
 });

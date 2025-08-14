@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,8 @@ function WelcomeCompletion({ applicationId }) {
     enabled: !!applicationId
   });
 
+  const [notificationSent, setNotificationSent] = useState(false);
+
   const notificationMutation = useMutation({
     mutationFn: async (types) => {
       if (!applicationId) throw new Error("No application ID");
@@ -22,6 +24,7 @@ function WelcomeCompletion({ applicationId }) {
       return response.json();
     },
     onSuccess: () => {
+      setNotificationSent(true);
       toast({
         title: "Welcome Messages Sent",
         description: "You'll receive confirmation messages in your email."
@@ -30,11 +33,20 @@ function WelcomeCompletion({ applicationId }) {
   });
 
   useEffect(() => {
-    if (applicationId) {
-      // Send welcome notifications (only email for real functionality)
-      notificationMutation.mutate(['sms', 'email', 'push']);
+    if (applicationId && !notificationSent && !notificationMutation.isPending) {
+      // Check if we've already sent notifications for this application
+      const sessionKey = `notifications_sent_${applicationId}`;
+      const alreadySent = sessionStorage.getItem(sessionKey);
+      
+      if (!alreadySent) {
+        // Mark as sent in session storage immediately to prevent multiple calls
+        sessionStorage.setItem(sessionKey, 'true');
+        notificationMutation.mutate(['sms', 'email', 'push']);
+      } else {
+        setNotificationSent(true);
+      }
     }
-  }, [applicationId, notificationMutation]);
+  }, [applicationId, notificationSent, notificationMutation.isPending]);
 
   return (
     <div className="text-center">
@@ -89,7 +101,10 @@ function WelcomeCompletion({ applicationId }) {
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button className="bg-blue-600 text-white hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 text-white hover:bg-blue-700"
+          onClick={() => window.location.href = '/dashboard'}
+        >
           <BarChart3 className="mr-2 h-4 w-4" /> Access Dashboard
         </Button>
       </div>

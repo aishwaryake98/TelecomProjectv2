@@ -290,6 +290,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Application not found" });
       }
       
+      // Check if notifications were already sent to prevent spam
+      if (application.notificationsSent) {
+        return res.json({ 
+          notifications: { sms: true, push: true, email: true },
+          message: "Notifications already sent"
+        });
+      }
+      
       const results = {
         sms: types.includes('sms'),
         push: types.includes('push'),
@@ -306,6 +314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         results.email = emailResult.success;
       }
+
+      // Mark notifications as sent
+      await storage.updateOnboardingApplication(req.params.id, {
+        notificationsSent: true
+      });
 
       res.json({ notifications: results });
     } catch (error) {
