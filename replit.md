@@ -7,6 +7,8 @@ This is a telecom customer onboarding application built with React (frontend) an
 Preferred communication style: Simple, everyday language.
 Code preference: Use JavaScript (.jsx) files instead of TypeScript for React components.
 UI preference: Remove Web Portal and 24/7 Support blocks from onboarding welcome screen.
+Authentication requirements: Both email and mobile number verification required.
+Form behavior: Previous button should preserve form values across navigation.
 
 # System Architecture
 
