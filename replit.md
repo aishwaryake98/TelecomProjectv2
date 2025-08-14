@@ -9,6 +9,8 @@ Code preference: Use JavaScript (.jsx) files instead of TypeScript for React com
 UI preference: Remove Web Portal and 24/7 Support blocks from onboarding welcome screen.
 Authentication requirements: Both email and mobile number verification required.
 Form behavior: Previous button should preserve form values across navigation.
+Port configuration: Application runs on port 3000 (updated from 5000).
+Email service: SendGrid integration with fallback to demo mode for testing.
 
 # System Architecture
 

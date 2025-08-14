@@ -1,7 +1,9 @@
 import sgMail from '@sendgrid/mail';
 
 // Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 // Store OTPs temporarily (in production, use Redis or database)
 const otpStorage = new Map<string, { otp: string; expires: number }>();
@@ -59,6 +61,9 @@ export async function sendOTPEmail(email: string, userName: string) {
   };
 
   try {
+    if (!process.env.SENDGRID_API_KEY) {
+      throw new Error('SendGrid API key not configured');
+    }
     await sgMail.send(msg);
     console.log(`OTP sent to ${email}: ${otp}`);
     return { success: true, message: 'OTP sent successfully' };
@@ -69,7 +74,7 @@ export async function sendOTPEmail(email: string, userName: string) {
     console.log(`DEMO MODE - OTP for ${email}: ${otp}`);
     return { 
       success: true, 
-      message: 'OTP sent successfully (Demo Mode - Check server logs for OTP)' 
+      message: `OTP sent successfully (Demo Mode - Check server logs for OTP: ${otp})` 
     };
   }
 }
@@ -161,6 +166,9 @@ export async function sendWelcomeEmail(email: string, userName: string, accountN
   };
 
   try {
+    if (!process.env.SENDGRID_API_KEY) {
+      throw new Error('SendGrid API key not configured');
+    }
     await sgMail.send(msg);
     console.log(`Welcome email sent to ${email}`);
     return { success: true, message: 'Welcome email sent successfully' };
