@@ -38,8 +38,8 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
     }
   });
 
-  // Enable form persistence
-  const { clearPersistedData } = useFormPersistence('customer-details-form', form);
+  // Enable form persistence - initialize saved data first
+  const { clearPersistedData } = useFormPersistence('customer-details-form', form, true);
 
   const createApplicationMutation = useMutation({
     mutationFn: async (data) => {

@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Upload, FileText, CheckCircle, CreditCard, IdCar
 function DocumentUpload({ applicationId, onNext, onPrev }) {
   const { toast } = useToast();
   const fileInputRef = useRef(null);
-  const [uploadedDocs, setUploadedDocs] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const uploadMutation = useMutation({
@@ -32,10 +32,12 @@ function DocumentUpload({ applicationId, onNext, onPrev }) {
       return response.json();
     },
     onSuccess: (data) => {
-      setUploadedDocs(prev => [...prev, ...data.documents]);
+      setUploadedFiles(prev => [...prev, ...(data.documents || [])]);
       toast({
-        title: "Documents Uploaded",
-        description: "Your documents have been uploaded successfully."
+        title: "Documents Uploaded & Analyzed",
+        description: data.overallStatus === 'approved' 
+          ? "Your documents have been successfully verified using AI analysis."
+          : "Documents uploaded. AI analysis completed - some may require review."
       });
     },
     onError: () => {
@@ -69,7 +71,7 @@ function DocumentUpload({ applicationId, onNext, onPrev }) {
     setIsDragOver(false);
   };
 
-  const canProceed = uploadedDocs.length > 0;
+  const canProceed = uploadedFiles.length > 0;
 
   return (
     <div>
@@ -127,10 +129,10 @@ function DocumentUpload({ applicationId, onNext, onPrev }) {
       </div>
 
       {/* Uploaded Files List */}
-      {uploadedDocs.length > 0 && (
+      {uploadedFiles.length > 0 && (
         <div className="mt-6 space-y-3">
           <h5 className="font-medium text-neutral-dark">Uploaded Documents</h5>
-          {uploadedDocs.map((doc) => (
+          {uploadedFiles.map((doc) => (
             <div key={doc.id} className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
               <FileText className="text-red-500 text-xl mr-3" />
               <div className="flex-1">

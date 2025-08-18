@@ -60,7 +60,9 @@ export function CountrySelector({ value, onValueChange, disabled = false }) {
           data-testid="country-selector-trigger"
         >
           <div className="flex items-center">
-            <span className="mr-2">{selectedCountry.flag}</span>
+            <span className="mr-2 text-lg" role="img" aria-label={selectedCountry.name}>
+              {selectedCountry.flag}
+            </span>
             <span className="font-mono text-sm">{selectedCountry.code}</span>
           </div>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -91,7 +93,9 @@ export function CountrySelector({ value, onValueChange, disabled = false }) {
                   )}
                 />
                 <div className="flex items-center">
-                  <span className="mr-3">{country.flag}</span>
+                  <span className="mr-3 text-lg" role="img" aria-label={country.name}>
+                    {country.flag}
+                  </span>
                   <div className="flex flex-col">
                     <span className="font-medium">{country.name}</span>
                     <span className="text-sm text-muted-foreground font-mono">{country.code}</span>

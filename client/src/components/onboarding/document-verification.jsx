@@ -19,50 +19,47 @@ function DocumentVerification({ applicationId, onNext, onPrev }) {
   const ocrMutation = useMutation({
     mutationFn: async () => {
       if (!applicationId) throw new Error("No application ID");
-      const response = await apiRequest("POST", `/api/onboarding/applications/${applicationId}/ocr`, {
-        documentType: 'aadhaar'
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      setOcrComplete(true);
-      toast({
-        title: "OCR Complete",
-        description: "Document data has been extracted successfully."
-      });
-      // Start verification after OCR
-      verifyMutation.mutate();
-    }
-  });
-
-  const verifyMutation = useMutation({
-    mutationFn: async () => {
-      if (!applicationId) throw new Error("No application ID");
-      const response = await apiRequest("POST", `/api/onboarding/applications/${applicationId}/verify`);
+      const response = await apiRequest("POST", `/api/onboarding/applications/${applicationId}/verify-documents`);
       return response.json();
     },
     onSuccess: (data) => {
+      setOcrComplete(true);
       setVerificationComplete(data.verified);
       toast({
-        title: data.verified ? "Verification Successful" : "Verification Failed",
+        title: "Document Analysis Complete",
         description: data.verified 
-          ? "All documents have been successfully verified" 
-          : "Document verification failed. Please check your documents.",
+          ? "Documents have been successfully verified using AI analysis."
+          : "Document verification completed. Some issues may require review.",
         variant: data.verified ? "default" : "destructive"
+      });
+    },
+    onError: (error) => {
+      setOcrProcessing(false);
+      toast({
+        title: "Analysis Failed",
+        description: "Document analysis failed. Please try again or contact support.",
+        variant: "destructive"
       });
     }
   });
+
+  // Remove the separate verify mutation since it's now combined with OCR
 
   useEffect(() => {
     if (applicationId && !ocrProcessing && !ocrComplete) {
       setOcrProcessing(true);
-      // Simulate processing delay
+      // Start AI analysis after a brief delay
       setTimeout(() => {
         ocrMutation.mutate();
-        setOcrProcessing(false);
-      }, 2000);
+      }, 1500);
     }
   }, [applicationId, ocrProcessing, ocrComplete, ocrMutation]);
+
+  useEffect(() => {
+    if (ocrMutation.isSuccess || ocrMutation.isError) {
+      setOcrProcessing(false);
+    }
+  }, [ocrMutation.isSuccess, ocrMutation.isError]);
 
   const extractedData = application?.extractedData;
 
@@ -87,10 +84,10 @@ function DocumentVerification({ applicationId, onNext, onPrev }) {
           </div>
           <p className="text-sm text-neutral-medium">
             {ocrProcessing 
-              ? "Extracting data from your documents using advanced AI technology..."
+              ? "Analyzing your documents using Google Gemini AI technology..."
               : ocrComplete 
-                ? "Data extraction completed successfully"
-                : "Waiting to start data extraction"
+                ? "AI document analysis completed successfully"
+                : "Waiting to start AI document analysis"
             }
           </p>
           {ocrProcessing && (

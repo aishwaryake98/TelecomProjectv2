@@ -9,9 +9,8 @@ export function useFormPersistence(storageKey, form, enabled = true) {
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        Object.keys(parsed).forEach(key => {
-          form.setValue(key, parsed[key]);
-        });
+        // Reset form with saved data to ensure proper initialization
+        form.reset(parsed);
       } catch (error) {
         console.warn('Failed to load saved form data:', error);
       }
