@@ -2,63 +2,50 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, Phone, Shield, RefreshCw, CheckCircle2, Clock } from "lucide-react";
+import { Mail, Phone, Shield, RefreshCw, CheckCircle2, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 
 function DualAuthentication({ applicationId, onNext, onPrev }) {
   const { toast } = useToast();
-  const [emailOTP, setEmailOTP] = useState("");
-  const [smsOTP, setSmsOTP] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [smsVerified, setSmsVerified] = useState(false);
-  const [emailTimer, setEmailTimer] = useState(0);
-  const [smsTimer, setSmsTimer] = useState(0);
+  const [verificationMethod, setVerificationMethod] = useState("email"); // email or sms
+  const [otp, setOtp] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
 
   const { data: application } = useQuery({
     queryKey: ['/api/onboarding/applications', applicationId],
     enabled: !!applicationId
   });
 
-  // Send Email OTP
-  const sendEmailOTPMutation = useMutation({
+  // Send OTP (Email or SMS based on selection)
+  const sendOTPMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/onboarding/applications/${applicationId}/send-otp`);
+      const endpoint = verificationMethod === "email" 
+        ? `/api/onboarding/applications/${applicationId}/send-otp`
+        : `/api/onboarding/applications/${applicationId}/send-sms-otp`;
+      const response = await apiRequest("POST", endpoint);
       return response.json();
     },
     onSuccess: () => {
+      const contactInfo = verificationMethod === "email" 
+        ? application?.email || 'your email'
+        : application?.phone || 'your phone';
       toast({
-        title: "Email OTP Sent",
-        description: `OTP has been sent to ${application?.email || 'your email'}`
+        title: `${verificationMethod === "email" ? "Email" : "SMS"} OTP Sent`,
+        description: `OTP has been sent to ${contactInfo}`
       });
-      setEmailTimer(60);
+      setTimer(60);
+      setOtpSent(true);
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to send email OTP. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Send SMS OTP
-  const sendSMSOTPMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/onboarding/applications/${applicationId}/send-sms-otp`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "SMS OTP Sent",
-        description: `OTP has been sent to ${application?.phone || 'your phone'}`
-      });
-      setSmsTimer(60);
-    },
-    onError: () => {
-      toast({
-        title: "Error", 
-        description: "Failed to send SMS OTP. Please try again.",
+        description: `Failed to send ${verificationMethod === "email" ? "email" : "SMS"} OTP. Please try again.`,
         variant: "destructive"
       });
     }

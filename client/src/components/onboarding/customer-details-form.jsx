@@ -10,11 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useFormPersistence } from "@/hooks/use-form-persistence.js";
+import CountrySelector from "@/components/ui/country-selector.jsx";
 
 const formSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
+  countryCode: z.string().min(1, "Please select a country code"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   address: z.string().min(10, "Please enter your complete address")
@@ -29,6 +31,7 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
       firstName: "",
       lastName: "",
       email: "",
+      countryCode: "+91",
       phone: "",
       dateOfBirth: "",
       address: ""
@@ -63,7 +66,12 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
   });
 
   const onSubmit = (values) => {
-    createApplicationMutation.mutate(values);
+    // Combine country code and phone number
+    const formattedData = {
+      ...values,
+      phone: `${values.countryCode} ${values.phone}`
+    };
+    createApplicationMutation.mutate(formattedData);
   };
 
   return (
@@ -118,12 +126,34 @@ function CustomerDetailsForm({ onNext, onPrev, onApplicationCreate }) {
           <div className="grid md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
+              name="countryCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country Code *</FormLabel>
+                  <FormControl>
+                    <CountrySelector 
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      data-testid="input-country-code"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="phone"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Phone Number *</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="+91 98765 43210" {...field} />
+                    <Input 
+                      type="tel" 
+                      placeholder="98765 43210" 
+                      {...field} 
+                      data-testid="input-phone"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

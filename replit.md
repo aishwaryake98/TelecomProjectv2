@@ -11,6 +11,9 @@ Authentication requirements: Both email and mobile number verification required.
 Form behavior: Previous button should preserve form values across navigation.
 Port configuration: Application runs on port 3000 (updated from 5000).
 Email service: SendGrid integration with fallback to demo mode for testing.
+Document verification: Google Gemini AI integration for PAN, Aadhaar, and Passport verification.
+Country selection: Country code dropdown with flag icons and search functionality.
+Dashboard features: Dynamic user data, profile editing, bill download, and navigation improvements.
 
 # System Architecture
 
@@ -90,3 +93,28 @@ Currently implements a session-based approach:
 - **Wouter**: Lightweight routing library for React
 
 The application is designed for deployment on Replit with specific configurations for the Replit environment, including development banner integration and cartographer plugin support.
+
+## Recent Enhancements
+
+### KYC Document Verification (August 2025)
+- Integrated Google Gemini AI for automated document analysis and verification
+- Support for PAN Card, Aadhaar Card, and Passport document types
+- Real-time document authenticity scoring and data extraction
+- Cross-verification of extracted data with user-provided information
+- Comprehensive verification reporting with approval/rejection recommendations
+
+### Enhanced User Experience Features
+- Country code selector with flag icons and search functionality for mobile numbers
+- Form data persistence across navigation using local storage
+- Dual authentication system allowing choice between email or SMS OTP
+- Dynamic dashboard with real user data integration
+- Profile editing functionality with validation
+- Bill download feature generating formatted bills
+- Improved navigation with breadcrumbs and back-to-home functionality
+
+### Technical Infrastructure
+- Gemini 2.5 Pro model integration for document processing
+- Enhanced API endpoints for document upload and verification
+- Improved error handling and fallback mechanisms
+- Real-time verification status updates
+- Secure document processing pipeline

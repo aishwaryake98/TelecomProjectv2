@@ -1,8 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
 import { 
   BarChart3, 
   Phone, 
@@ -13,19 +20,35 @@ import {
   History,
   Download,
   Shield,
-  TrendingUp
+  TrendingUp,
+  Home,
+  Edit,
+  Save,
+  ArrowLeft
 } from "lucide-react";
 
 function Dashboard() {
-  // Mock user data for demonstration
-  const mockUser = {
-    name: "Aishwarya KE",
-    email: "aishwaryake1998@gmail.com",
-    phone: "+91 98765 43210",
-    accountNumber: "TC-743263530",
-    plan: "Premium Unlimited",
-    status: "Active",
-    activationDate: "Today",
+  const { toast } = useToast();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({});
+
+  // Get user data from the most recent application
+  const { data: applications } = useQuery({
+    queryKey: ['/api/onboarding/applications'],
+    select: (data) => Array.isArray(data) ? data : []
+  });
+
+  // Get the most recent user application
+  const userApplication = applications?.[applications.length - 1];
+  
+  const userData = userApplication ? {
+    name: `${userApplication.firstName} ${userApplication.lastName}`,
+    email: userApplication.email,
+    phone: userApplication.phone,
+    accountNumber: userApplication.accountNumber || "TC-" + userApplication.id.slice(-8).toUpperCase(),
+    plan: userApplication.planType || "Premium Unlimited",
+    status: userApplication.serviceActivated ? "Active" : "Pending",
+    activationDate: userApplication.serviceActivated ? "Today" : "Pending",
     usage: {
       data: { used: 45.2, total: 100, unit: "GB" },
       calls: { used: 120, total: 500, unit: "minutes" },
@@ -36,7 +59,105 @@ function Dashboard() {
       dueDate: "25th Aug 2025",
       status: "paid"
     }
+  } : {
+    name: "User",
+    email: "user@example.com",
+    phone: "+91 00000 00000",
+    accountNumber: "TC-XXXXXXXX",
+    plan: "Premium Unlimited",
+    status: "Pending",
+    activationDate: "Pending",
+    usage: {
+      data: { used: 0, total: 100, unit: "GB" },
+      calls: { used: 0, total: 500, unit: "minutes" },
+      sms: { used: 0, total: 200, unit: "messages" }
+    },
+    billing: {
+      currentBill: 0,
+      dueDate: "Not available",
+      status: "pending"
+    }
   };
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (profileData) => {
+      if (userApplication?.id) {
+        const response = await apiRequest("PATCH", `/api/onboarding/applications/${userApplication.id}`, profileData);
+        return response.json();
+      }
+      throw new Error("No application ID found");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully."
+      });
+      setIsEditingProfile(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Generate and download bill
+  const downloadBillMutation = useMutation({
+    mutationFn: async () => {
+      // Simulate PDF generation and download
+      const billData = {
+        customerName: userData.name,
+        accountNumber: userData.accountNumber,
+        billingPeriod: "August 2025",
+        amount: userData.billing.currentBill,
+        dueDate: userData.billing.dueDate,
+        usage: userData.usage
+      };
+      return billData;
+    },
+    onSuccess: (billData) => {
+      // Generate and download a simple text file as demo
+      const content = `
+TELECONNECT BILL
+
+Customer: ${billData.customerName}
+Account: ${billData.accountNumber}
+Billing Period: ${billData.billingPeriod}
+Amount Due: ₹${billData.amount}
+Due Date: ${billData.dueDate}
+
+Usage Summary:
+- Data: ${userData.usage.data.used} GB of ${userData.usage.data.total} GB
+- Voice: ${userData.usage.calls.used} of ${userData.usage.calls.total} minutes
+- SMS: ${userData.usage.sms.used} of ${userData.usage.sms.total} messages
+
+Thank you for choosing TeleConnect!
+      `;
+
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `TeleConnect_Bill_${billData.accountNumber}_${billData.billingPeriod.replace(' ', '_')}.txt`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Bill Downloaded",
+        description: "Your bill has been downloaded successfully."
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to download bill. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,17 +166,67 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome back, {mockUser.name}</h1>
-              <p className="text-gray-600">Account: {mockUser.accountNumber}</p>
+              <div className="flex items-center space-x-4">
+                <Link href="/" data-testid="link-home">
+                  <Button variant="ghost" size="sm">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Home
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Welcome back, {userData.name}</h1>
+                  <p className="text-gray-600">Account: {userData.accountNumber}</p>
+                </div>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                {mockUser.status}
+              <Badge 
+                variant="outline" 
+                className={userData.status === 'Active' 
+                  ? "bg-green-50 text-green-700 border-green-200" 
+                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                }
+              >
+                {userData.status}
               </Badge>
-              <Button variant="outline" size="sm">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Account Settings</DialogTitle>
+                    <DialogDescription>
+                      Update your account preferences and profile information.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold">Profile Information</h4>
+                      <Button
+                        onClick={() => {
+                          setIsEditingProfile(true);
+                          setEditedProfile({
+                            firstName: userData.name.split(' ')[0],
+                            lastName: userData.name.split(' ').slice(1).join(' '),
+                            email: userData.email,
+                            phone: userData.phone
+                          });
+                        }}
+                        variant="outline"
+                        className="w-full"
+                        data-testid="button-edit-profile"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Profile
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
@@ -81,14 +252,14 @@ function Dashboard() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockUser.usage.data.used} GB</div>
+                  <div className="text-2xl font-bold">{userData.usage.data.used} GB</div>
                   <p className="text-xs text-muted-foreground">
-                    of {mockUser.usage.data.total} GB used
+                    of {userData.usage.data.total} GB used
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div 
                       className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${(mockUser.usage.data.used / mockUser.usage.data.total) * 100}%` }}
+                      style={{ width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -100,14 +271,14 @@ function Dashboard() {
                   <Phone className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockUser.usage.calls.used}</div>
+                  <div className="text-2xl font-bold">{userData.usage.calls.used}</div>
                   <p className="text-xs text-muted-foreground">
-                    of {mockUser.usage.calls.total} minutes used
+                    of {userData.usage.calls.total} minutes used
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                     <div 
                       className="bg-green-600 h-2 rounded-full" 
-                      style={{ width: `${(mockUser.usage.calls.used / mockUser.usage.calls.total) * 100}%` }}
+                      style={{ width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -119,9 +290,9 @@ function Dashboard() {
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹{mockUser.billing.currentBill}</div>
+                  <div className="text-2xl font-bold">₹{userData.billing.currentBill}</div>
                   <p className="text-xs text-muted-foreground">
-                    Due {mockUser.billing.dueDate}
+                    Due {userData.billing.dueDate}
                   </p>
                   <Badge variant="outline" className="mt-2 bg-green-50 text-green-700 border-green-200">
                     Paid
@@ -183,16 +354,16 @@ function Dashboard() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span>Used this month</span>
-                      <span className="font-semibold">{mockUser.usage.data.used} GB</span>
+                      <span className="font-semibold">{userData.usage.data.used} GB</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div 
                         className="bg-blue-600 h-3 rounded-full" 
-                        style={{ width: `${(mockUser.usage.data.used / mockUser.usage.data.total) * 100}%` }}
+                        style={{ width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%` }}
                       ></div>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {mockUser.usage.data.total - mockUser.usage.data.used} GB remaining
+                      {userData.usage.data.total - userData.usage.data.used} GB remaining
                     </div>
                   </div>
                 </CardContent>
@@ -207,24 +378,24 @@ function Dashboard() {
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span>Voice Minutes</span>
-                        <span className="font-semibold">{mockUser.usage.calls.used}/{mockUser.usage.calls.total}</span>
+                        <span className="font-semibold">{userData.usage.calls.used}/{userData.usage.calls.total}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-green-600 h-2 rounded-full" 
-                          style={{ width: `${(mockUser.usage.calls.used / mockUser.usage.calls.total) * 100}%` }}
+                          style={{ width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%` }}
                         ></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span>SMS Messages</span>
-                        <span className="font-semibold">{mockUser.usage.sms.used}/{mockUser.usage.sms.total}</span>
+                        <span className="font-semibold">{userData.usage.sms.used}/{userData.usage.sms.total}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-purple-600 h-2 rounded-full" 
-                          style={{ width: `${(mockUser.usage.sms.used / mockUser.usage.sms.total) * 100}%` }}
+                          style={{ width: `${(userData.usage.sms.used / userData.usage.sms.total) * 100}%` }}
                         ></div>
                       </div>
                     </div>
@@ -244,7 +415,7 @@ function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span>Plan ({mockUser.plan})</span>
+                      <span>Plan ({userData.plan})</span>
                       <span className="font-semibold">₹899</span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -254,14 +425,20 @@ function Dashboard() {
                     <hr />
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total Amount</span>
-                      <span>₹{mockUser.billing.currentBill}</span>
+                      <span>₹{userData.billing.currentBill}</span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      Due Date: {mockUser.billing.dueDate}
+                      Due Date: {userData.billing.dueDate}
                     </div>
-                    <Button className="w-full" variant="outline">
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={() => downloadBillMutation.mutate()}
+                      disabled={downloadBillMutation.isPending}
+                      data-testid="button-download-bill"
+                    >
                       <Download className="mr-2 h-4 w-4" />
-                      Download Bill
+                      {downloadBillMutation.isPending ? "Generating..." : "Download Bill"}
                     </Button>
                   </div>
                 </CardContent>
@@ -302,25 +479,25 @@ function Dashboard() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">Full Name</label>
-                      <p className="mt-1 text-sm text-gray-900">{mockUser.name}</p>
+                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-name">{userData.name}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Email Address</label>
-                      <p className="mt-1 text-sm text-gray-900">{mockUser.email}</p>
+                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-email">{userData.email}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                      <p className="mt-1 text-sm text-gray-900">{mockUser.phone}</p>
+                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-phone">{userData.phone}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-gray-700">Account Number</label>
-                      <p className="mt-1 text-sm text-gray-900">{mockUser.accountNumber}</p>
+                      <p className="mt-1 text-sm text-gray-900" data-testid="text-account-number">{userData.accountNumber}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Plan Type</label>
-                      <p className="mt-1 text-sm text-gray-900">{mockUser.plan}</p>
+                      <p className="mt-1 text-sm text-gray-900" data-testid="text-plan-type">{userData.plan}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Account Status</label>

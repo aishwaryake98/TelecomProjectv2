@@ -6,6 +6,7 @@ import { insertOnboardingApplicationSchema, updateOnboardingApplicationSchema, i
 import { z } from "zod";
 import { sendOTPEmail, verifyOTP, sendWelcomeEmail } from "./email";
 import { sendSMSOTP, verifySMSOTP, resendSMSOTP } from "./sms";
+import { analyzeDocument, verifyDocumentData, generateVerificationReport } from "./gemini-service";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -68,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload documents
+  // Upload documents with AI verification
   app.post("/api/onboarding/applications/:id/documents", upload.array('documents', 5), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
@@ -77,30 +78,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const uploadedDocs = [];
+      const verificationResults = [];
+
       for (const file of files) {
+        // Analyze document with Gemini AI
+        let analysisResult = null;
+        let verificationStatus = 'pending';
+        
+        try {
+          analysisResult = await analyzeDocument(file.buffer, req.body.documentType || 'unknown');
+          verificationStatus = analysisResult.isValid ? 'verified' : 'failed';
+        } catch (error) {
+          console.error('Document analysis failed:', error);
+          verificationStatus = 'review_required';
+        }
+
         const documentData = {
           applicationId: req.params.id,
           fileName: file.originalname,
           fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
           fileType: file.mimetype,
-          documentType: req.body.documentType || 'aadhaar' // Should be determined from file analysis
+          documentType: analysisResult?.documentType || req.body.documentType || 'unknown'
         };
 
         const document = await storage.createDocument(documentData);
-        uploadedDocs.push(document);
+        uploadedDocs.push({
+          ...document,
+          verificationStatus,
+          analysisResult
+        });
+
+        if (analysisResult) {
+          verificationResults.push(analysisResult);
+        }
       }
 
-      // Update application with uploaded documents
+      // Update application with uploaded documents and verification results
       const application = await storage.getOnboardingApplication(req.params.id);
       if (application) {
         const existingDocs = Array.isArray(application.documentsUploaded) ? application.documentsUploaded : [];
+        const allVerified = verificationResults.every(result => result.isValid);
+        
         await storage.updateOnboardingApplication(req.params.id, {
-          documentsUploaded: [...existingDocs, ...uploadedDocs]
+          documentsUploaded: [...existingDocs, ...uploadedDocs],
+          extractedData: verificationResults[0]?.extractedData,
+          verificationStatus: allVerified ? 'verified' : 'review_required'
         });
       }
 
-      res.json({ documents: uploadedDocs });
+      res.json({ 
+        documents: uploadedDocs,
+        verificationResults,
+        overallStatus: verificationResults.every(r => r.isValid) ? 'approved' : 'review_required'
+      });
     } catch (error) {
+      console.error('Document upload error:', error);
       res.status(500).json({ message: "Failed to upload documents" });
     }
   });
@@ -115,40 +147,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simulate OCR processing
-  app.post("/api/onboarding/applications/:id/ocr", async (req, res) => {
-    try {
-      const { documentType } = req.body;
-      const extractedData = await storage.simulateOCRExtraction(documentType);
-      
-      // Update application with extracted data
-      await storage.updateOnboardingApplication(req.params.id, {
-        extractedData,
-        verificationStatus: 'processing'
-      });
-
-      res.json({ extractedData });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to process OCR" });
-    }
-  });
-
-  // Simulate document verification
-  app.post("/api/onboarding/applications/:id/verify", async (req, res) => {
+  // Verify documents with cross-reference to user data
+  app.post("/api/onboarding/applications/:id/verify-documents", async (req, res) => {
     try {
       const application = await storage.getOnboardingApplication(req.params.id);
       if (!application) {
         return res.status(404).json({ message: "Application not found" });
       }
 
-      const isVerified = await storage.simulateDocumentVerification(application.extractedData);
-      
+      if (!application.extractedData) {
+        return res.status(400).json({ message: "No document data found for verification" });
+      }
+
+      // Cross-verify extracted data with user-provided information
+      const userData = {
+        fullName: `${application.firstName} ${application.lastName}`,
+        email: application.email,
+        phone: application.phone,
+        dateOfBirth: application.dateOfBirth,
+        address: application.address
+      };
+
+      const matchResult = await verifyDocumentData(
+        application.extractedData,
+        userData,
+        'combined'
+      );
+
+      // Generate comprehensive verification report
+      const report = await generateVerificationReport(
+        { 
+          isValid: true, 
+          confidence: 85, 
+          extractedData: application.extractedData,
+          verificationErrors: [],
+          documentType: 'combined'
+        },
+        matchResult
+      );
+
+      // Update application status based on verification results
       await storage.updateOnboardingApplication(req.params.id, {
-        verificationStatus: isVerified ? 'verified' : 'failed'
+        verificationStatus: report.overallStatus === 'approved' ? 'verified' : 'review_required'
       });
 
-      res.json({ verified: isVerified });
+      res.json({
+        matchResult,
+        report,
+        verified: report.overallStatus === 'approved'
+      });
     } catch (error) {
+      console.error('Document verification error:', error);
       res.status(500).json({ message: "Failed to verify documents" });
     }
   });
