@@ -165,12 +165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!application.extractedData) {
         // Try to re-analyze the first document
         try {
-          // For now, provide mock extracted data as fallback to prevent the error
+          // Provide mock extracted data as fallback to prevent the error
           const mockExtractedData = {
             fullName: `${application.firstName} ${application.lastName}`,
-            documentNumber: "MOCK123456789",
+            documentNumber: "MOCK123456789", 
             dateOfBirth: application.dateOfBirth,
-            address: application.address
+            address: application.address || 'Demo Address, City'
           };
           
           // Update application with mock data temporarily

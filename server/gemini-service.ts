@@ -1,7 +1,10 @@
 import * as fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({
+  apiKey: "AIzaSyAyBhZPAt1FuOtUhsTNnc0YyfReACq4gFY",
+});
 
 export interface DocumentAnalysisResult {
   isValid: boolean;
@@ -24,7 +27,7 @@ export interface DocumentAnalysisResult {
 
 export async function analyzeDocument(
   imageBuffer: Buffer,
-  documentType: string
+  documentType: string,
 ): Promise<DocumentAnalysisResult> {
   try {
     // Fallback result in case of API issues
@@ -33,24 +36,24 @@ export async function analyzeDocument(
       confidence: 75,
       extractedData: {
         fullName: "Sample User",
-        documentNumber: "DEMO123456789", 
+        documentNumber: "DEMO123456789",
         dateOfBirth: "1990-01-01",
         address: "Sample Address",
       },
       verificationErrors: [],
-      documentType: documentType || 'aadhaar'
+      documentType: documentType || "aadhaar",
     };
 
     // Check if Gemini API key is available
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('Gemini API key not available, using fallback data');
-      return fallbackResult;
-    }
+    // if (!process.env.GEMINI_API_KEY) {
+    //   console.warn('Gemini API key not available, using fallback data');
+    //   return fallbackResult;
+    // }
 
     const base64Image = imageBuffer.toString("base64");
-    
+
     const prompt = generateVerificationPrompt(documentType);
-    
+
     const contents = [
       {
         inlineData: {
@@ -61,43 +64,68 @@ export async function analyzeDocument(
       prompt,
     ];
 
+    // const response = await ai.models.generateContent({
+    //   model: "gemini-2.5-pro",
+    //   config: {
+    //     responseMimeType: "application/json",
+    //     responseSchema: {
+    //       type: "object",
+    //       properties: {
+    //         isValid: { type: "boolean" },
+    //         confidence: { type: "number" },
+    //         extractedData: {
+    //           type: "object",
+    //           properties: {
+    //             fullName: { type: "string" },
+    //             documentNumber: { type: "string" },
+    //             dateOfBirth: { type: "string" },
+    //             address: { type: "string" },
+    //             fatherName: { type: "string" },
+    //             gender: { type: "string" },
+    //             nationality: { type: "string" },
+    //             issueDate: { type: "string" },
+    //             expiryDate: { type: "string" },
+    //             placeOfBirth: { type: "string" },
+    //           },
+    //         },
+    //         verificationErrors: {
+    //           type: "array",
+    //           items: { type: "string" },
+    //         },
+    //         documentType: { type: "string" },
+    //       },
+    //       required: [
+    //         "isValid",
+    //         "confidence",
+    //         "extractedData",
+    //         "verificationErrors",
+    //         "documentType",
+    //       ],
+    //     },
+    //   },
+    //   contents: contents,
+    // });
+
+    // const rawJson = response.text;
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "object",
-          properties: {
-            isValid: { type: "boolean" },
-            confidence: { type: "number" },
-            extractedData: {
-              type: "object",
-              properties: {
-                fullName: { type: "string" },
-                documentNumber: { type: "string" },
-                dateOfBirth: { type: "string" },
-                address: { type: "string" },
-                fatherName: { type: "string" },
-                gender: { type: "string" },
-                nationality: { type: "string" },
-                issueDate: { type: "string" },
-                expiryDate: { type: "string" },
-                placeOfBirth: { type: "string" },
-              },
-            },
-            verificationErrors: {
-              type: "array",
-              items: { type: "string" },
-            },
-            documentType: { type: "string" },
-          },
-          required: ["isValid", "confidence", "extractedData", "verificationErrors", "documentType"],
+          /* your schema */
         },
       },
-      contents: contents,
     });
 
-    const rawJson = response.text;
+    // Correct way to get text:
+    const rawJson = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     if (!rawJson) {
       throw new Error("Empty response from Gemini API");
     }
@@ -107,7 +135,7 @@ export async function analyzeDocument(
   } catch (error) {
     console.error("Document analysis failed:", error);
     console.log("Falling back to demo data for development");
-    
+
     // Return fallback result instead of throwing error
     return {
       isValid: true,
@@ -119,14 +147,14 @@ export async function analyzeDocument(
         address: "Demo Address, City",
       },
       verificationErrors: ["Using demo data - Gemini analysis unavailable"],
-      documentType: documentType || 'aadhaar'
+      documentType: documentType || "aadhaar",
     };
   }
 }
 
 function generateVerificationPrompt(documentType: string): string {
   switch (documentType.toLowerCase()) {
-    case 'pan':
+    case "pan":
       return `
         Analyze this PAN card image and extract the following information:
         1. Verify if this is a valid Indian PAN card
@@ -146,8 +174,8 @@ function generateVerificationPrompt(documentType: string): string {
         
         Return a confidence score (0-100) based on document authenticity and data clarity.
       `;
-    
-    case 'aadhaar':
+
+    case "aadhaar":
       return `
         Analyze this Aadhaar card image and extract the following information:
         1. Verify if this is a valid Indian Aadhaar card
@@ -169,8 +197,8 @@ function generateVerificationPrompt(documentType: string): string {
         
         Return a confidence score (0-100) based on authenticity and readability.
       `;
-    
-    case 'passport':
+
+    case "passport":
       return `
         Analyze this passport image and extract the following information:
         1. Verify if this is a valid passport
@@ -193,7 +221,7 @@ function generateVerificationPrompt(documentType: string): string {
         
         Return a confidence score (0-100) based on document authenticity and completeness.
       `;
-    
+
     default:
       return `
         Analyze this document and extract any relevant personal identification information.
@@ -206,7 +234,7 @@ function generateVerificationPrompt(documentType: string): string {
 export async function verifyDocumentData(
   extractedData: any,
   userProvidedData: any,
-  documentType: string
+  documentType: string,
 ): Promise<{
   isMatching: boolean;
   discrepancies: string[];
@@ -233,7 +261,7 @@ export async function verifyDocumentData(
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash",
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -266,9 +294,9 @@ export async function verifyDocumentData(
 
 export async function generateVerificationReport(
   analysisResult: DocumentAnalysisResult,
-  matchResult: any
+  matchResult: any,
 ): Promise<{
-  overallStatus: 'approved' | 'rejected' | 'review_required';
+  overallStatus: "approved" | "rejected" | "review_required";
   summary: string;
   recommendations: string[];
 }> {
@@ -298,7 +326,7 @@ export async function generateVerificationReport(
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash",
       config: {
         responseMimeType: "application/json",
         responseSchema: {

@@ -6,17 +6,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { 
-  BarChart3, 
-  Phone, 
-  Mail, 
-  Settings, 
-  User, 
-  CreditCard, 
+import {
+  BarChart3,
+  Phone,
+  Mail,
+  Settings,
+  User,
+  CreditCard,
   History,
   Download,
   Shield,
@@ -24,8 +32,13 @@ import {
   Home,
   Edit,
   Save,
-  ArrowLeft
+  ArrowLeft,
 } from "lucide-react";
+const mockUser = {
+  name: "John Doe",
+  email: "john@example.com",
+  status: "Active", // or "Pending", "Blocked"
+};
 
 function Dashboard() {
   const { toast } = useToast();
@@ -34,56 +47,64 @@ function Dashboard() {
 
   // Get user data from the most recent application
   const { data: applications } = useQuery({
-    queryKey: ['/api/onboarding/applications'],
-    select: (data) => Array.isArray(data) ? data : []
+    queryKey: ["/api/onboarding/applications"],
+    select: (data) => (Array.isArray(data) ? data : []),
   });
 
   // Get the most recent user application
   const userApplication = applications?.[applications.length - 1];
-  
-  const userData = userApplication ? {
-    name: `${userApplication.firstName} ${userApplication.lastName}`,
-    email: userApplication.email,
-    phone: userApplication.phone,
-    accountNumber: userApplication.accountNumber || "TC-" + userApplication.id.slice(-8).toUpperCase(),
-    plan: userApplication.planType || "Premium Unlimited",
-    status: userApplication.serviceActivated ? "Active" : "Pending",
-    activationDate: userApplication.serviceActivated ? "Today" : "Pending",
-    usage: {
-      data: { used: 45.2, total: 100, unit: "GB" },
-      calls: { used: 120, total: 500, unit: "minutes" },
-      sms: { used: 85, total: 200, unit: "messages" }
-    },
-    billing: {
-      currentBill: 899,
-      dueDate: "25th Aug 2025",
-      status: "paid"
-    }
-  } : {
-    name: "User",
-    email: "user@example.com",
-    phone: "+91 00000 00000",
-    accountNumber: "TC-XXXXXXXX",
-    plan: "Premium Unlimited",
-    status: "Pending",
-    activationDate: "Pending",
-    usage: {
-      data: { used: 0, total: 100, unit: "GB" },
-      calls: { used: 0, total: 500, unit: "minutes" },
-      sms: { used: 0, total: 200, unit: "messages" }
-    },
-    billing: {
-      currentBill: 0,
-      dueDate: "Not available",
-      status: "pending"
-    }
-  };
+
+  const userData = userApplication
+    ? {
+        name: `${userApplication.firstName} ${userApplication.lastName}`,
+        email: userApplication.email,
+        phone: userApplication.phone,
+        accountNumber:
+          userApplication.accountNumber ||
+          "TC-" + userApplication.id.slice(-8).toUpperCase(),
+        plan: userApplication.planType || "Premium Unlimited",
+        status: userApplication.serviceActivated ? "Active" : "Pending",
+        activationDate: userApplication.serviceActivated ? "Today" : "Pending",
+        usage: {
+          data: { used: 45.2, total: 100, unit: "GB" },
+          calls: { used: 120, total: 500, unit: "minutes" },
+          sms: { used: 85, total: 200, unit: "messages" },
+        },
+        billing: {
+          currentBill: 899,
+          dueDate: "25th Aug 2025",
+          status: "paid",
+        },
+      }
+    : {
+        name: "User",
+        email: "user@example.com",
+        phone: "+91 00000 00000",
+        accountNumber: "TC-XXXXXXXX",
+        plan: "Premium Unlimited",
+        status: "Pending",
+        activationDate: "Pending",
+        usage: {
+          data: { used: 0, total: 100, unit: "GB" },
+          calls: { used: 0, total: 500, unit: "minutes" },
+          sms: { used: 0, total: 200, unit: "messages" },
+        },
+        billing: {
+          currentBill: 0,
+          dueDate: "Not available",
+          status: "pending",
+        },
+      };
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (profileData) => {
       if (userApplication?.id) {
-        const response = await apiRequest("PATCH", `/api/onboarding/applications/${userApplication.id}`, profileData);
+        const response = await apiRequest(
+          "PATCH",
+          `/api/onboarding/applications/${userApplication.id}`,
+          profileData,
+        );
         return response.json();
       }
       throw new Error("No application ID found");
@@ -91,7 +112,7 @@ function Dashboard() {
     onSuccess: () => {
       toast({
         title: "Profile Updated",
-        description: "Your profile has been updated successfully."
+        description: "Your profile has been updated successfully.",
       });
       setIsEditingProfile(false);
     },
@@ -99,9 +120,9 @@ function Dashboard() {
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   // Generate and download bill
@@ -114,7 +135,7 @@ function Dashboard() {
         billingPeriod: "August 2025",
         amount: userData.billing.currentBill,
         dueDate: userData.billing.dueDate,
-        usage: userData.usage
+        usage: userData.usage,
       };
       return billData;
     },
@@ -137,26 +158,26 @@ Usage Summary:
 Thank you for choosing TeleConnect!
       `;
 
-      const blob = new Blob([content], { type: 'text/plain' });
+      const blob = new Blob([content], { type: "text/plain" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `TeleConnect_Bill_${billData.accountNumber}_${billData.billingPeriod.replace(' ', '_')}.txt`;
+      link.download = `TeleConnect_Bill_${billData.accountNumber}_${billData.billingPeriod.replace(" ", "_")}.txt`;
       link.click();
       window.URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Bill Downloaded",
-        description: "Your bill has been downloaded successfully."
+        description: "Your bill has been downloaded successfully.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
         description: "Failed to download bill. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   return (
@@ -174,24 +195,33 @@ Thank you for choosing TeleConnect!
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Welcome back, {userData.name}</h1>
-                  <p className="text-gray-600">Account: {userData.accountNumber}</p>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    Welcome back, {userData.name}
+                  </h1>
+                  <p className="text-gray-600">
+                    Account: {userData.accountNumber}
+                  </p>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge 
-                variant="outline" 
-                className={userData.status === 'Active' 
-                  ? "bg-green-50 text-green-700 border-green-200" 
-                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+              <Badge
+                variant="outline"
+                className={
+                  userData.status === "Active"
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-yellow-50 text-yellow-700 border-yellow-200"
                 }
               >
                 {userData.status}
               </Badge>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-settings">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-settings"
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Button>
@@ -210,10 +240,13 @@ Thank you for choosing TeleConnect!
                         onClick={() => {
                           setIsEditingProfile(true);
                           setEditedProfile({
-                            firstName: userData.name.split(' ')[0],
-                            lastName: userData.name.split(' ').slice(1).join(' '),
+                            firstName: userData.name.split(" ")[0],
+                            lastName: userData.name
+                              .split(" ")
+                              .slice(1)
+                              .join(" "),
                             email: userData.email,
-                            phone: userData.phone
+                            phone: userData.phone,
                           });
                         }}
                         variant="outline"
@@ -248,18 +281,24 @@ Thank you for choosing TeleConnect!
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Data Usage</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Data Usage
+                  </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{userData.usage.data.used} GB</div>
+                  <div className="text-2xl font-bold">
+                    {userData.usage.data.used} GB
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     of {userData.usage.data.total} GB used
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%` }}
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%`,
+                      }}
                     ></div>
                   </div>
                 </CardContent>
@@ -267,18 +306,24 @@ Thank you for choosing TeleConnect!
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Voice Minutes</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Voice Minutes
+                  </CardTitle>
                   <Phone className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{userData.usage.calls.used}</div>
+                  <div className="text-2xl font-bold">
+                    {userData.usage.calls.used}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     of {userData.usage.calls.total} minutes used
                   </p>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full" 
-                      style={{ width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%` }}
+                    <div
+                      className="bg-green-600 h-2 rounded-full"
+                      style={{
+                        width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%`,
+                      }}
                     ></div>
                   </div>
                 </CardContent>
@@ -286,15 +331,22 @@ Thank you for choosing TeleConnect!
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Current Bill</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Current Bill
+                  </CardTitle>
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹{userData.billing.currentBill}</div>
+                  <div className="text-2xl font-bold">
+                    ₹{userData.billing.currentBill}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Due {userData.billing.dueDate}
                   </p>
-                  <Badge variant="outline" className="mt-2 bg-green-50 text-green-700 border-green-200">
+                  <Badge
+                    variant="outline"
+                    className="mt-2 bg-green-50 text-green-700 border-green-200"
+                  >
                     Paid
                   </Badge>
                 </CardContent>
@@ -314,7 +366,9 @@ Thank you for choosing TeleConnect!
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Account Activated</p>
-                      <p className="text-xs text-gray-500">Your TeleConnect account is now active and ready to use</p>
+                      <p className="text-xs text-gray-500">
+                        Your TeleConnect account is now active and ready to use
+                      </p>
                     </div>
                     <span className="text-xs text-gray-500">Today</span>
                   </div>
@@ -324,7 +378,9 @@ Thank you for choosing TeleConnect!
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Welcome Email Sent</p>
-                      <p className="text-xs text-gray-500">Account details and welcome information delivered</p>
+                      <p className="text-xs text-gray-500">
+                        Account details and welcome information delivered
+                      </p>
                     </div>
                     <span className="text-xs text-gray-500">Today</span>
                   </div>
@@ -333,8 +389,12 @@ Thank you for choosing TeleConnect!
                       <User className="h-4 w-4 text-orange-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">KYC Verification Complete</p>
-                      <p className="text-xs text-gray-500">Identity verification successful</p>
+                      <p className="text-sm font-medium">
+                        KYC Verification Complete
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Identity verification successful
+                      </p>
                     </div>
                     <span className="text-xs text-gray-500">Today</span>
                   </div>
@@ -354,16 +414,21 @@ Thank you for choosing TeleConnect!
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span>Used this month</span>
-                      <span className="font-semibold">{userData.usage.data.used} GB</span>
+                      <span className="font-semibold">
+                        {userData.usage.data.used} GB
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-blue-600 h-3 rounded-full" 
-                        style={{ width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%` }}
+                      <div
+                        className="bg-blue-600 h-3 rounded-full"
+                        style={{
+                          width: `${(userData.usage.data.used / userData.usage.data.total) * 100}%`,
+                        }}
                       ></div>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {userData.usage.data.total - userData.usage.data.used} GB remaining
+                      {userData.usage.data.total - userData.usage.data.used} GB
+                      remaining
                     </div>
                   </div>
                 </CardContent>
@@ -378,24 +443,33 @@ Thank you for choosing TeleConnect!
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span>Voice Minutes</span>
-                        <span className="font-semibold">{userData.usage.calls.used}/{userData.usage.calls.total}</span>
+                        <span className="font-semibold">
+                          {userData.usage.calls.used}/
+                          {userData.usage.calls.total}
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full" 
-                          style={{ width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%` }}
+                        <div
+                          className="bg-green-600 h-2 rounded-full"
+                          style={{
+                            width: `${(userData.usage.calls.used / userData.usage.calls.total) * 100}%`,
+                          }}
                         ></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span>SMS Messages</span>
-                        <span className="font-semibold">{userData.usage.sms.used}/{userData.usage.sms.total}</span>
+                        <span className="font-semibold">
+                          {userData.usage.sms.used}/{userData.usage.sms.total}
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-purple-600 h-2 rounded-full" 
-                          style={{ width: `${(userData.usage.sms.used / userData.usage.sms.total) * 100}%` }}
+                        <div
+                          className="bg-purple-600 h-2 rounded-full"
+                          style={{
+                            width: `${(userData.usage.sms.used / userData.usage.sms.total) * 100}%`,
+                          }}
                         ></div>
                       </div>
                     </div>
@@ -430,15 +504,17 @@ Thank you for choosing TeleConnect!
                     <div className="text-sm text-gray-600">
                       Due Date: {userData.billing.dueDate}
                     </div>
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       variant="outline"
                       onClick={() => downloadBillMutation.mutate()}
                       disabled={downloadBillMutation.isPending}
                       data-testid="button-download-bill"
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      {downloadBillMutation.isPending ? "Generating..." : "Download Bill"}
+                      {downloadBillMutation.isPending
+                        ? "Generating..."
+                        : "Download Bill"}
                     </Button>
                   </div>
                 </CardContent>
@@ -455,12 +531,16 @@ Thank you for choosing TeleConnect!
                         <p className="font-medium">Current Month</p>
                         <p className="text-sm text-gray-600">Aug 2025</p>
                       </div>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <Badge
+                        variant="outline"
+                        className="bg-green-50 text-green-700 border-green-200"
+                      >
                         Paid
                       </Badge>
                     </div>
                     <div className="text-sm text-gray-600">
-                      Payment history will be available after your first billing cycle.
+                      Payment history will be available after your first billing
+                      cycle.
                     </div>
                   </div>
                 </CardContent>
@@ -478,30 +558,70 @@ Thank you for choosing TeleConnect!
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Full Name</label>
-                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-name">{userData.name}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Full Name
+                      </label>
+                      <p
+                        className="mt-1 text-sm text-gray-900"
+                        data-testid="text-user-name"
+                      >
+                        {userData.name}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Email Address</label>
-                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-email">{userData.email}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Email Address
+                      </label>
+                      <p
+                        className="mt-1 text-sm text-gray-900"
+                        data-testid="text-user-email"
+                      >
+                        {userData.email}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                      <p className="mt-1 text-sm text-gray-900" data-testid="text-user-phone">{userData.phone}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Phone Number
+                      </label>
+                      <p
+                        className="mt-1 text-sm text-gray-900"
+                        data-testid="text-user-phone"
+                      >
+                        {userData.phone}
+                      </p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Account Number</label>
-                      <p className="mt-1 text-sm text-gray-900" data-testid="text-account-number">{userData.accountNumber}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Account Number
+                      </label>
+                      <p
+                        className="mt-1 text-sm text-gray-900"
+                        data-testid="text-account-number"
+                      >
+                        {userData.accountNumber}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Plan Type</label>
-                      <p className="mt-1 text-sm text-gray-900" data-testid="text-plan-type">{userData.plan}</p>
+                      <label className="text-sm font-medium text-gray-700">
+                        Plan Type
+                      </label>
+                      <p
+                        className="mt-1 text-sm text-gray-900"
+                        data-testid="text-plan-type"
+                      >
+                        {userData.plan}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Account Status</label>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <label className="text-sm font-medium text-gray-700">
+                        Account Status
+                      </label>
+                      <Badge
+                        variant="outline"
+                        className="bg-green-50 text-green-700 border-green-200"
+                      >
                         {mockUser.status}
                       </Badge>
                     </div>

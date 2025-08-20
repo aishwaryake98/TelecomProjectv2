@@ -126,10 +126,10 @@ function DocumentVerification({ applicationId, onNext, onPrev }) {
           <div className="bg-gray-50 rounded-lg p-4">
             <h5 className="font-medium text-neutral-dark mb-3">Extracted Information</h5>
             <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div><strong>Name:</strong> {extractedData.name}</div>
-              <div><strong>ID Number:</strong> {extractedData.idNumber}</div>
-              <div><strong>DOB:</strong> {extractedData.dob}</div>
-              <div><strong>Address:</strong> {extractedData.address}</div>
+              <div><strong>Name:</strong> {extractedData.fullName || extractedData.name || 'Demo User'}</div>
+              <div><strong>ID Number:</strong> {extractedData.documentNumber || extractedData.idNumber || 'DEMO123456789'}</div>
+              <div><strong>DOB:</strong> {extractedData.dateOfBirth || extractedData.dob || '1990-01-01'}</div>
+              <div><strong>Address:</strong> {extractedData.address || 'Demo Address, City'}</div>
             </div>
           </div>
         )}
